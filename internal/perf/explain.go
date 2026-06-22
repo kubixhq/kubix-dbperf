@@ -38,7 +38,7 @@ func Explain(ctx context.Context, db *sql.DB, query string) (*ExplainNode, error
 }
 
 func isSelectQuery(q string) bool {
-	upper := strings.ToUpper(q)
+	upper := strings.ToUpper(strings.TrimSpace(q))
 	for _, dml := range []string{"INSERT", "UPDATE", "DELETE", "TRUNCATE", "DROP", "ALTER", "CREATE"} {
 		if strings.HasPrefix(upper, dml) {
 			return false

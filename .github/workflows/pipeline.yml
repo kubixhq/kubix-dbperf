@@ -1,0 +1,43 @@
+name: Pipeline
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 9 * * 1"
+
+jobs:
+  lint:
+    if: github.event_name != 'schedule'
+    uses: kubixhq/.github/.github/workflows/reusable-lint-go.yml@main
+    with:
+      go-version: "1.25"
+
+  test:
+    needs: lint
+    uses: kubixhq/.github/.github/workflows/reusable-ci-go.yml@main
+    with:
+      go-version-matrix: '["1.24", "1.25"]'
+
+  codeql:
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    uses: kubixhq/.github/.github/workflows/reusable-codeql.yml@main
+    with:
+      language: go
+
+  release:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+      packages: write
+    uses: kubixhq/.github/.github/workflows/reusable-release.yml@main
+    with:
+      image-name: kubix-dbperf
+      language: go
