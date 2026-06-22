@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	_ "github.com/lib/pq"
 	"github.com/kubixhq/kubix-dbperf/internal/perf"
+	_ "github.com/lib/pq"
 )
 
 func integrationDB(t *testing.T) *sql.DB {

@@ -35,29 +35,29 @@ type MissingIndex struct {
 
 // IndexReport is the full response for /api/perf/indexes.
 type IndexReport struct {
-	Unused    []IndexInfo           `json:"unused"`
-	RarelyUsed []IndexInfo          `json:"rarely_used"`
-	Missing   []MissingIndex        `json:"missing"`
-	Duplicate []DuplicateIndexGroup `json:"duplicate"`
+	Unused     []IndexInfo           `json:"unused"`
+	RarelyUsed []IndexInfo           `json:"rarely_used"`
+	Missing    []MissingIndex        `json:"missing"`
+	Duplicate  []DuplicateIndexGroup `json:"duplicate"`
 }
 
 // ExplainNode is one node in the EXPLAIN plan tree.
 type ExplainNode struct {
-	Type       string       `json:"type"`
-	Cost       float64      `json:"cost"`
-	ActualTime float64      `json:"actual_time"`
-	Rows       int64        `json:"rows"`
+	Type       string        `json:"type"`
+	Cost       float64       `json:"cost"`
+	ActualTime float64       `json:"actual_time"`
+	Rows       int64         `json:"rows"`
 	Children   []ExplainNode `json:"children,omitempty"`
 }
 
 // TableStat is one row for /api/perf/tables.
 type TableStat struct {
-	TableName   string   `json:"table_name"`
-	SeqScan     int64    `json:"seq_scan"`
-	IdxScan     int64    `json:"idx_scan"`
-	LiveRows    int64    `json:"live_rows"`
-	DeadRows    int64    `json:"dead_rows"`
-	BloatRatio  float64  `json:"bloat_ratio"`
-	LastVacuum  *string  `json:"last_vacuum"`
-	NeedsVacuum bool     `json:"needs_vacuum"`
+	TableName   string  `json:"table_name"`
+	SeqScan     int64   `json:"seq_scan"`
+	IdxScan     int64   `json:"idx_scan"`
+	LiveRows    int64   `json:"live_rows"`
+	DeadRows    int64   `json:"dead_rows"`
+	BloatRatio  float64 `json:"bloat_ratio"`
+	LastVacuum  *string `json:"last_vacuum"`
+	NeedsVacuum bool    `json:"needs_vacuum"`
 }

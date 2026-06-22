@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/lib/pq"
 	"github.com/kubixhq/kubix-dbperf/internal/perf"
+	"github.com/lib/pq"
 )
 
 func newIndexDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {

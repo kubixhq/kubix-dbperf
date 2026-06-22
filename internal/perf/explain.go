@@ -49,11 +49,11 @@ func isSelectQuery(q string) bool {
 
 // pgPlan mirrors the JSON shape that PostgreSQL returns for FORMAT JSON plans.
 type pgPlan struct {
-	NodeType          string   `json:"Node Type"`
-	TotalCost         float64  `json:"Total Cost"`
-	ActualTotalTime   float64  `json:"Actual Total Time"`
-	ActualRows        int64    `json:"Actual Rows"`
-	Plans             []pgPlan `json:"Plans"`
+	NodeType        string   `json:"Node Type"`
+	TotalCost       float64  `json:"Total Cost"`
+	ActualTotalTime float64  `json:"Actual Total Time"`
+	ActualRows      int64    `json:"Actual Rows"`
+	Plans           []pgPlan `json:"Plans"`
 }
 
 type pgPlanWrapper struct {
