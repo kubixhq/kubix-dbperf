@@ -1,0 +1,15 @@
+services:
+  kubix-dbperf:
+    image: ghcr.io/kubixhq/kubix-dbperf:latest
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
+      SLOW_QUERY_THRESHOLD_MS: ${SLOW_QUERY_THRESHOLD_MS:-100}
+      SERVER_PORT: 8081
+    restart: unless-stopped
