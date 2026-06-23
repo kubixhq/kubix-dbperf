@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kubixhq/kubix-dbperf/internal/config"
 	"github.com/kubixhq/kubix-dbperf/internal/perf"
@@ -86,6 +87,142 @@ func (h *Handler) Tables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)
+}
+
+// ── Alert handlers ────────────────────────────────────────────────────────────
+
+type alertRow struct {
+	ID          int64   `json:"id"`
+	ThresholdMs float64 `json:"thresholdMs"`
+	Label       string  `json:"label"`
+	Enabled     bool    `json:"enabled"`
+	CreatedAt   string  `json:"createdAt"`
+}
+
+// GET /api/perf/alerts
+func (h *Handler) ListAlerts(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.db.QueryContext(r.Context(), `
+		SELECT id, threshold_ms, label, enabled, created_at::text
+		FROM kubix_perf_alerts ORDER BY created_at DESC
+	`)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list alerts")
+		return
+	}
+	defer rows.Close()
+	var alerts []alertRow
+	for rows.Next() {
+		var a alertRow
+		if err := rows.Scan(&a.ID, &a.ThresholdMs, &a.Label, &a.Enabled, &a.CreatedAt); err == nil {
+			alerts = append(alerts, a)
+		}
+	}
+	if alerts == nil {
+		alerts = []alertRow{}
+	}
+	writeJSON(w, http.StatusOK, alerts)
+}
+
+// POST /api/perf/alerts  { thresholdMs: 500, label: "Slow queries" }
+func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ThresholdMs float64 `json:"thresholdMs"`
+		Label       string  `json:"label"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ThresholdMs <= 0 {
+		writeError(w, http.StatusBadRequest, "thresholdMs must be a positive number")
+		return
+	}
+	var id int64
+	err := h.db.QueryRowContext(r.Context(), `
+		INSERT INTO kubix_perf_alerts (threshold_ms, label, created_at)
+		VALUES ($1, $2, $3) RETURNING id
+	`, req.ThresholdMs, req.Label, time.Now().UTC()).Scan(&id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create alert")
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "thresholdMs": req.ThresholdMs, "label": req.Label})
+}
+
+// DELETE /api/perf/alerts/{id}
+func (h *Handler) DeleteAlert(w http.ResponseWriter, r *http.Request) {
+	raw := r.PathValue("id")
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	_, _ = h.db.ExecContext(r.Context(), `DELETE FROM kubix_perf_alerts WHERE id = $1`, id)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /api/perf/alerts/check
+// Returns current slow queries that violate any enabled alert threshold.
+func (h *Handler) CheckAlerts(w http.ResponseWriter, r *http.Request) {
+	type violation struct {
+		AlertID     int64   `json:"alertId"`
+		ThresholdMs float64 `json:"thresholdMs"`
+		Label       string  `json:"label"`
+		Query       string  `json:"query"`
+		MeanExecMs  float64 `json:"meanExecMs"`
+	}
+
+	rows, err := h.db.QueryContext(r.Context(), `
+		SELECT id, threshold_ms, label FROM kubix_perf_alerts WHERE enabled = true
+	`)
+	if err != nil {
+		writeJSON(w, http.StatusOK, []violation{})
+		return
+	}
+	defer rows.Close()
+
+	var alerts []alertRow
+	for rows.Next() {
+		var a alertRow
+		if err := rows.Scan(&a.ID, &a.ThresholdMs, &a.Label); err == nil {
+			alerts = append(alerts, a)
+		}
+	}
+
+	if len(alerts) == 0 {
+		writeJSON(w, http.StatusOK, []violation{})
+		return
+	}
+
+	// find the minimum threshold to use one query
+	minThreshold := alerts[0].ThresholdMs
+	for _, a := range alerts[1:] {
+		if a.ThresholdMs < minThreshold {
+			minThreshold = a.ThresholdMs
+		}
+	}
+
+	queries, err := perf.SlowQueries(r.Context(), h.db, minThreshold)
+	if err != nil {
+		writeJSON(w, http.StatusOK, []violation{})
+		return
+	}
+
+	var violations []violation
+	for _, q := range queries {
+		for _, a := range alerts {
+			if q.MeanExecTime >= a.ThresholdMs {
+				violations = append(violations, violation{
+					AlertID:     a.ID,
+					ThresholdMs: a.ThresholdMs,
+					Label:       a.Label,
+					Query:       q.Query,
+					MeanExecMs:  q.MeanExecTime,
+				})
+				break
+			}
+		}
+	}
+	if violations == nil {
+		violations = []violation{}
+	}
+	writeJSON(w, http.StatusOK, violations)
 }
 
 func (h *Handler) handlePerfError(w http.ResponseWriter, err error) {

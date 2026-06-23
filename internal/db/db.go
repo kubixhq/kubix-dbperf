@@ -11,6 +11,20 @@ import (
 	"github.com/kubixhq/kubix-dbperf/internal/config"
 )
 
+// Migrate creates the alerts config table if it doesn't exist.
+func Migrate(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS kubix_perf_alerts (
+			id         SERIAL PRIMARY KEY,
+			threshold_ms FLOAT NOT NULL,
+			label      TEXT NOT NULL DEFAULT '',
+			enabled    BOOLEAN NOT NULL DEFAULT true,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)
+	`)
+	return err
+}
+
 func Connect(cfg config.Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%d dbname=%s user=%s password=%s sslmode=%s",
